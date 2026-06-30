@@ -10,10 +10,10 @@ const PROTECTED_ROUTES = ["/dashboard"];
 // Routes only for unauthenticated users
 const AUTH_ROUTES = ["/login", "/signup"];
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("photosaas_token")?.value;
-  const payload = token ? verifyToken(token) : null;
+  const payload = token ? await verifyToken(token) : null;
 
   const isProtected = PROTECTED_ROUTES.some((r) => pathname.startsWith(r));
   const isAuthRoute = AUTH_ROUTES.some((r) => pathname.startsWith(r));

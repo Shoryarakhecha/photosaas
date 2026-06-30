@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import DashboardClient from "./DashboardClient";
 
 export default async function DashboardPage() {
-  const tokenPayload = getCurrentUser();
+  const tokenPayload = await getCurrentUser();
   if (!tokenPayload) redirect("/login");
 
   const user = await prisma.user.findUnique({

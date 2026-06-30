@@ -1,17 +1,12 @@
 // src/lib/auth.ts
-// JWT creation, verification, and cookie helpers
-
-import jwt from "jsonwebtoken";
+import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 const COOKIE_NAME = "photosaas_token";
 const TOKEN_EXPIRY = "7d";
 
-// ─────────────────────────────────────────
-// TOKEN PAYLOAD SHAPE
-// ─────────────────────────────────────────
 export interface TokenPayload {
   userId: string;
   tenantId: string;
@@ -20,37 +15,30 @@ export interface TokenPayload {
   tenantSlug: string;
 }
 
-// ─────────────────────────────────────────
-// CREATE JWT
-// ─────────────────────────────────────────
-export function createToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+export async function createToken(payload: TokenPayload): Promise<string> {
+  return new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(TOKEN_EXPIRY)
+    .sign(JWT_SECRET);
 }
 
-// ─────────────────────────────────────────
-// VERIFY JWT
-// ─────────────────────────────────────────
-export function verifyToken(token: string): TokenPayload | null {
+export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return payload as unknown as TokenPayload;
   } catch {
     return null;
   }
 }
 
-// ─────────────────────────────────────────
-// GET CURRENT USER FROM COOKIE (Server Components / API Routes)
-// ─────────────────────────────────────────
-export function getCurrentUser(): TokenPayload | null {
+export async function getCurrentUser(): Promise<TokenPayload | null> {
   const cookieStore = cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
   return verifyToken(token);
 }
 
-// ─────────────────────────────────────────
-// PASSWORD HASHING
-// ─────────────────────────────────────────
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
 }
@@ -59,21 +47,15 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-// ─────────────────────────────────────────
-// COOKIE CONFIG
-// ─────────────────────────────────────────
 export const COOKIE_OPTIONS = {
   name: COOKIE_NAME,
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
-  maxAge: 60 * 60 * 24 * 7, // 7 days in seconds
+  maxAge: 60 * 60 * 24 * 7,
   path: "/",
 };
 
-// ─────────────────────────────────────────
-// SLUG GENERATOR (for tenant subdomains)
-// ─────────────────────────────────────────
 export function generateSlug(name: string): string {
   return name
     .toLowerCase()
