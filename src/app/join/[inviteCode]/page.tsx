@@ -28,10 +28,14 @@ export default function JoinPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  // "details" → "otp" → "joined"
+  const [step, setStep] = useState<"details" | "otp" | "joined">("details");
+
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
+  const [otpCode, setOtpCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [joined, setJoined] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [lightboxPhoto, setLightboxPhoto] = useState<Photo | null>(null);
 
@@ -48,25 +52,93 @@ export default function JoinPage() {
       .finally(() => setLoading(false));
   }, [inviteCode]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Cooldown ticker for the "resend code" button
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
+  const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setSubmitError("");
 
     try {
-      const res = await fetch(`/api/join/${inviteCode}`, {
+      const res = await fetch(`/api/join/${inviteCode}/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ email: form.email }),
       });
       const data = await res.json();
 
       if (!res.ok) {
-        setSubmitError(data.error || "Failed to join");
+        setSubmitError(data.error || "Failed to send code");
         return;
       }
 
-      setJoined(true);
+      setStep("otp");
+      setResendCooldown(30);
+    } catch {
+      setSubmitError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    setSubmitError("");
+    try {
+      const res = await fetch(`/api/join/${inviteCode}/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSubmitError(data.error || "Failed to resend code");
+        return;
+      }
+      setResendCooldown(30);
+    } catch {
+      setSubmitError("Network error. Please try again.");
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitError("");
+
+    try {
+      // Step 1: verify the code
+      const verifyRes = await fetch(`/api/join/${inviteCode}/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email, code: otpCode }),
+      });
+      const verifyData = await verifyRes.json();
+
+      if (!verifyRes.ok) {
+        setSubmitError(verifyData.error || "Verification failed");
+        return;
+      }
+
+      // Step 2: now that email is verified, actually create the Member
+      const joinRes = await fetch(`/api/join/${inviteCode}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const joinData = await joinRes.json();
+
+      if (!joinRes.ok) {
+        setSubmitError(joinData.error || "Failed to join the event");
+        return;
+      }
+
+      setStep("joined");
       fetchPhotos();
     } catch {
       setSubmitError("Network error. Please try again.");
@@ -107,7 +179,7 @@ export default function JoinPage() {
     );
   }
 
-  if (joined) {
+  if (step === "joined") {
     return (
       <div className={styles.page}>
         <div className={styles.galleryWrap}>
@@ -162,6 +234,56 @@ export default function JoinPage() {
     );
   }
 
+  if (step === "otp") {
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>
+          <div className={styles.icon}>📧</div>
+          <h1 className={styles.title}>Check your email</h1>
+          <p className={styles.subtitle}>
+            We sent a 6-digit code to <strong>{form.email}</strong>
+          </p>
+
+          <div className={styles.divider} />
+
+          {submitError && <div className={styles.errorBanner}>{submitError}</div>}
+
+          <form onSubmit={handleVerifyOtp} className={styles.form}>
+            <input
+              className={styles.otpInput}
+              placeholder="000000"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              inputMode="numeric"
+              maxLength={6}
+              autoFocus
+              required
+            />
+            <button
+              type="submit"
+              className={styles.btn}
+              disabled={submitting || otpCode.length !== 6}
+            >
+              {submitting ? "Verifying…" : "Verify & join →"}
+            </button>
+          </form>
+
+          <button
+            className={styles.resendBtn}
+            onClick={handleResendOtp}
+            disabled={resendCooldown > 0}
+          >
+            {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
+          </button>
+
+          <button className={styles.backBtn} onClick={() => setStep("details")}>
+            ← Use a different email
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.card}>
@@ -180,7 +302,7 @@ export default function JoinPage() {
 
         {submitError && <div className={styles.errorBanner}>{submitError}</div>}
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+        <form onSubmit={handleRequestOtp} className={styles.form}>
           <input
             className={styles.input}
             placeholder="Your name"
@@ -192,9 +314,10 @@ export default function JoinPage() {
           <input
             className={styles.input}
             type="email"
-            placeholder="Email (recommended — for photo notifications)"
+            placeholder="Email — we'll send a verification code"
             value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            required
           />
           <input
             className={styles.input}
@@ -203,7 +326,7 @@ export default function JoinPage() {
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
           />
           <button type="submit" className={styles.btn} disabled={submitting}>
-            {submitting ? "Joining…" : "Join event →"}
+            {submitting ? "Sending code…" : "Send verification code →"}
           </button>
         </form>
       </div>

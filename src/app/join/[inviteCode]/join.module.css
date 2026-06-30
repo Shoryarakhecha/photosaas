@@ -133,6 +133,61 @@
 .btn:hover:not(:disabled) { background: var(--color-brand-dark); }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ── OTP step ── */
+.otpInput {
+  width: 100%;
+  padding: 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  text-align: center;
+  font-family: monospace;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.otpInput:focus {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px var(--color-brand-light);
+}
+
+.resendBtn {
+  width: 100%;
+  margin-top: 14px;
+  padding: 9px;
+  background: transparent;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-brand);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.resendBtn:disabled {
+  color: var(--color-text-light);
+  cursor: not-allowed;
+}
+
+.backBtn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px;
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.backBtn:hover {
+  color: var(--color-text);
+}
+
 /* ── Post-join gallery ── */
 .galleryWrap {
   width: 100%;

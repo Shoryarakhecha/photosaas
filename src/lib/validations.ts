@@ -55,13 +55,17 @@ export const CreateEventSchema = z.object({
 
 export type CreateEventInput = z.infer<typeof CreateEventSchema>;
 
+// Basic phone format check — allows optional +, digits, spaces, hyphens, parens.
+// Not full E.164 validation (would need a phone library), but blocks obvious garbage.
+const phoneRegex = /^[+]?[\d\s\-()]{7,20}$/;
+
 // ─────────────────────────────────────────
 // MANUALLY ADD MEMBER (by owner/staff)
 // ─────────────────────────────────────────
 export const AddMemberSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
   email: z.string().email("Please enter a valid email").optional().or(z.literal("")),
-  phone: z.string().max(20).optional().or(z.literal("")),
+  phone: z.string().regex(phoneRegex, "Please enter a valid phone number").optional().or(z.literal("")),
 });
 
 export type AddMemberInput = z.infer<typeof AddMemberSchema>;
@@ -69,10 +73,31 @@ export type AddMemberInput = z.infer<typeof AddMemberSchema>;
 // ─────────────────────────────────────────
 // SELF-JOIN (public, via invite link — no auth)
 // ─────────────────────────────────────────
+// Email is now required — it must be OTP-verified before a Member row
+// is created (see /api/join/[inviteCode]/send-otp + verify-otp).
 export const SelfJoinSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
-  email: z.string().email("Please enter a valid email").optional().or(z.literal("")),
-  phone: z.string().max(20).optional().or(z.literal("")),
+  email: z.string().email("Please enter a valid email"),
+  phone: z.string().regex(phoneRegex, "Please enter a valid phone number").optional().or(z.literal("")),
 });
 
 export type SelfJoinInput = z.infer<typeof SelfJoinSchema>;
+
+// ─────────────────────────────────────────
+// OTP — SEND CODE
+// ─────────────────────────────────────────
+export const SendOtpSchema = z.object({
+  email: z.string().email("Please enter a valid email"),
+});
+
+export type SendOtpInput = z.infer<typeof SendOtpSchema>;
+
+// ─────────────────────────────────────────
+// OTP — VERIFY CODE
+// ─────────────────────────────────────────
+export const VerifyOtpSchema = z.object({
+  email: z.string().email("Please enter a valid email"),
+  code: z.string().length(6, "Code must be 6 digits"),
+});
+
+export type VerifyOtpInput = z.infer<typeof VerifyOtpSchema>;

@@ -128,22 +128,44 @@ model Photo {
 // MEMBER (end-user who views/downloads photos)
 // ─────────────────────────────────────────
 model Member {
-  id        String     @id @default(cuid())
-  tenantId  String
-  eventId   String?
-  name      String
-  email     String?
-  phone     String?
-  selfieUrl String?    // for face recognition
-  joinedVia JoinMethod @default(MANUAL)
-  createdAt DateTime   @default(now())
+  id            String     @id @default(cuid())
+  tenantId      String
+  eventId       String?
+  name          String
+  email         String?
+  phone         String?
+  emailVerified Boolean    @default(false) // true once OTP confirmed (self-join only; manual adds skip this)
+  selfieUrl     String?    // for face recognition
+  joinedVia     JoinMethod @default(MANUAL)
+  createdAt     DateTime   @default(now())
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  event     Event?     @relation(fields: [eventId], references: [id])
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event         Event?     @relation(fields: [eventId], references: [id])
 
   // Prevent the same email from joining the same event twice (when email is provided)
   @@unique([eventId, email])
   @@map("members")
+}
+
+// ─────────────────────────────────────────
+// OTP VERIFICATION (email OTP for self-join flow)
+// ─────────────────────────────────────────
+// Short-lived, single-purpose codes. Not tied to a Member yet — verification
+// happens BEFORE a Member record is created, so the join form can't be
+// submitted with an unverified email.
+model OtpVerification {
+  id        String   @id @default(cuid())
+  eventId   String                          // which event's join flow this OTP belongs to
+  email     String
+  code      String                          // 6-digit code, hashed not stored in plain text
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)            // failed verify attempts, capped to prevent brute force
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // One active OTP per (event, email) pair — re-requesting overwrites the old one
+  @@unique([eventId, email])
+  @@map("otp_verifications")
 }
 
 // ─────────────────────────────────────────

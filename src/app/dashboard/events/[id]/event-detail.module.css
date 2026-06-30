@@ -77,6 +77,13 @@
   margin-bottom: 16px;
 }
 
+.liveDot {
+  color: #10b981;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
 /* Invite card */
 .qrWrap {
   display: flex;

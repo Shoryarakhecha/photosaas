@@ -1,7 +1,7 @@
 "use client";
 // src/app/dashboard/events/[id]/EventDetailClient.tsx
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import styles from "./event-detail.module.css";
@@ -187,6 +187,28 @@ export default function EventDetailClient({ event, canManage }: Props) {
     }
   };
 
+  // ── Live updates: poll every 5s for new members/photos (e.g. self-joins,
+  // uploads from another staff member) without requiring a manual refresh.
+  // Paused while a local upload is in progress so it can't clobber the
+  // in-flight optimistic state from handleFiles.
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (uploading || deletingId) return;
+      try {
+        const res = await fetch(`/api/events/${event.id}/live`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setMembers(data.members);
+        setPhotos(data.photos);
+      } catch {
+        // Silent failure — next poll will retry. Not worth surfacing a
+        // visible error for a background refresh.
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [event.id, uploading, deletingId]);
+
   return (
     <div className={styles.page}>
       <Link href="/dashboard/events" className={styles.back}>
@@ -242,7 +264,9 @@ export default function EventDetailClient({ event, canManage }: Props) {
           <div className={styles.membersHeader}>
             <div>
               <h2 className={styles.cardTitle}>Members</h2>
-              <p className={styles.cardSubtitle}>{members.length} joined</p>
+              <p className={styles.cardSubtitle}>
+                {members.length} joined <span className={styles.liveDot}>● live</span>
+              </p>
             </div>
             {canManage && (
               <button className={styles.addBtn} onClick={() => setShowAddForm((s) => !s)}>
@@ -308,7 +332,9 @@ export default function EventDetailClient({ event, canManage }: Props) {
         <div className={styles.membersHeader}>
           <div>
             <h2 className={styles.cardTitle}>Photos</h2>
-            <p className={styles.cardSubtitle}>{photos.length} uploaded</p>
+            <p className={styles.cardSubtitle}>
+              {photos.length} uploaded <span className={styles.liveDot}>● live</span>
+            </p>
           </div>
         </div>
 
