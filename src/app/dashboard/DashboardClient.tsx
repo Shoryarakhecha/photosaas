@@ -2,6 +2,7 @@
 // src/app/dashboard/DashboardClient.tsx
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import styles from "./dashboard.module.css";
 
 interface Props {
@@ -63,9 +64,9 @@ export default function DashboardClient({ user }: Props) {
           <a href="#" className={`${styles.navItem} ${styles.navActive}`}>
             <span>🏠</span> Dashboard
           </a>
-          <a href="#" className={styles.navItem}>
+          <Link href="/dashboard/events" className={styles.navItem}>
             <span>🎉</span> Events
-          </a>
+          </Link>
           <a href="#" className={styles.navItem}>
             <span>🖼</span> Photos
           </a>
@@ -133,19 +134,30 @@ export default function DashboardClient({ user }: Props) {
           <h2 className={styles.sectionTitle}>What's next</h2>
           <div className={styles.stepsList}>
             {[
-              { icon: "🎉", title: "Create your first event", desc: "Add a wedding, school day, or any event to start uploading photos.", done: user.tenant._count.events > 0 },
-              { icon: "📤", title: "Upload photos", desc: "Bulk upload event photos. We'll store them securely in the cloud.", done: false },
-              { icon: "👥", title: "Invite members", desc: "Members can find their own photos using face recognition.", done: user.tenant._count.members > 0 },
-              { icon: "🤳", title: "Enable face search", desc: "Members upload a selfie and the AI finds their photos automatically.", done: false },
-            ].map((step, i) => (
-              <div key={i} className={`${styles.nextStep} ${step.done ? styles.nextStepDone : ""}`}>
-                <div className={styles.nextStepIcon}>{step.done ? "✅" : step.icon}</div>
-                <div>
-                  <p className={styles.nextStepTitle}>{step.title}</p>
-                  <p className={styles.nextStepDesc}>{step.desc}</p>
+              { icon: "🎉", title: "Create your first event", desc: "Add a wedding, school day, or any event to start uploading photos.", done: user.tenant._count.events > 0, href: "/dashboard/events/new" },
+              { icon: "📤", title: "Upload photos", desc: "Bulk upload event photos. We'll store them securely in the cloud.", done: false, href: null },
+              { icon: "👥", title: "Invite members", desc: "Members can find their own photos using face recognition.", done: user.tenant._count.members > 0, href: "/dashboard/events" },
+              { icon: "🤳", title: "Enable face search", desc: "Members upload a selfie and the AI finds their photos automatically.", done: false, href: null },
+            ].map((step, i) => {
+              const content = (
+                <>
+                  <div className={styles.nextStepIcon}>{step.done ? "✅" : step.icon}</div>
+                  <div>
+                    <p className={styles.nextStepTitle}>{step.title}</p>
+                    <p className={styles.nextStepDesc}>{step.desc}</p>
+                  </div>
+                </>
+              );
+              return step.href ? (
+                <Link key={i} href={step.href} className={`${styles.nextStep} ${step.done ? styles.nextStepDone : ""}`}>
+                  {content}
+                </Link>
+              ) : (
+                <div key={i} className={`${styles.nextStep} ${step.done ? styles.nextStepDone : ""}`}>
+                  {content}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

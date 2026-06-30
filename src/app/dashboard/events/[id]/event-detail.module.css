@@ -1,0 +1,454 @@
+/* src/app/dashboard/events/[id]/event-detail.module.css */
+
+.page {
+  max-width: 920px;
+}
+
+.back {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+
+.back:hover { color: var(--color-text); }
+
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.4px;
+  margin-bottom: 6px;
+}
+
+.meta {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.publicBadge {
+  background: var(--color-brand-light);
+  color: var(--color-brand-dark);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+}
+
+.description {
+  font-size: 13.5px;
+  color: var(--color-text);
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.cardTitle {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.cardSubtitle {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+/* Invite card */
+.qrWrap {
+  display: flex;
+  justify-content: center;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.qrImage {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+}
+
+.linkRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.linkInput {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  min-width: 0;
+}
+
+.copyBtn {
+  padding: 9px 14px;
+  background: var(--color-brand);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.copyBtn:hover { background: var(--color-brand-dark); }
+
+.regenerateBtn {
+  width: 100%;
+  padding: 9px;
+  background: transparent;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.regenerateBtn:hover:not(:disabled) {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.regenerateBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Members card */
+.membersHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.addBtn {
+  padding: 7px 13px;
+  background: var(--color-brand-light);
+  color: var(--color-brand-dark);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.addBtn:hover { background: #c7d2fe; }
+
+.addForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--color-bg);
+  padding: 14px;
+  border-radius: var(--radius-md);
+  margin: 14px 0;
+}
+
+.addInput {
+  padding: 9px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.addInput:focus {
+  border-color: var(--color-brand);
+}
+
+.addError {
+  font-size: 12px;
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.addSubmitBtn {
+  padding: 9px;
+  background: var(--color-brand);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.addSubmitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.membersList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.noMembers {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 30px 0;
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.memberAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.memberInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.memberName {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.memberContact {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+}
+
+.joinBadge {
+  font-size: 10.5px;
+  color: var(--color-text-light);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ── Photos section ── */
+.photosCard {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-top: 20px;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  margin: 14px 0;
+}
+
+.dropzone:hover {
+  border-color: var(--color-brand);
+  background: var(--color-brand-light);
+}
+
+.dropzoneActive {
+  border-color: var(--color-brand);
+  background: var(--color-brand-light);
+}
+
+.dropzoneIcon {
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+
+.dropzoneText {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.dropzoneHint {
+  font-size: 11.5px;
+  color: var(--color-text-light);
+  margin-top: 4px;
+}
+
+.uploadProgress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--color-border);
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.photoThumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.photoThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  display: block;
+  transition: transform 0.15s;
+}
+
+.photoThumb:hover img {
+  transform: scale(1.04);
+}
+
+.photoDeleteBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.photoThumb:hover .photoDeleteBtn {
+  opacity: 1;
+}
+
+.photoDeleteBtn:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* ── Lightbox ── */
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 40px 20px;
+}
+
+.lightboxImage {
+  max-width: 100%;
+  max-height: 75vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.lightboxClose {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.lightboxClose:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.lightboxDownload {
+  margin-top: 18px;
+  padding: 10px 20px;
+  background: white;
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.lightboxDownload:hover {
+  background: #f0f0f0;
+}
