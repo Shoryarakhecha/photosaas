@@ -85,6 +85,8 @@ model Event {
   date        DateTime
   coverUrl    String?
   isPublic    Boolean     @default(false)
+  allowMemberUploads Boolean @default(false)   // ADD THIS LINE
+
   status      EventStatus @default(ACTIVE)
   inviteCode  String      @unique @default(cuid())  // used in /join/[inviteCode] self-join link
   createdById String                                  // which user created this event
@@ -106,19 +108,22 @@ model Photo {
   id           String   @id @default(cuid())
   tenantId     String
   eventId      String
-  url          String                    // Cloudinary secure_url — full resolution
-  thumbnailUrl String                    // Cloudinary auto-cropped/compressed thumbnail
-  publicId     String                    // Cloudinary public_id — needed to delete the asset later
+  url          String
+  thumbnailUrl String
+  publicId     String
   width        Int
   height       Int
-  bytes        Int                       // file size, used for storage usage tracking
-  order        Int      @default(0)      // upload order, used since captions were skipped for MVP
-  uploadedById String
+  bytes        Int
+  embeddings   Json?
+  order        Int      @default(0)
+  uploadedById       String?
+  uploadedByMemberId String?
   createdAt    DateTime @default(now())
 
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event            Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  uploadedBy       User?    @relation(fields: [uploadedById], references: [id])
+  uploadedByMember Member?  @relation(fields: [uploadedByMemberId], references: [id])
 
   @@index([eventId])
   @@map("photos")
@@ -141,6 +146,7 @@ model Member {
 
   tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   event         Event?     @relation(fields: [eventId], references: [id])
+  uploadedPhotos Photo[]
 
   // Prevent the same email from joining the same event twice (when email is provided)
   @@unique([eventId, email])

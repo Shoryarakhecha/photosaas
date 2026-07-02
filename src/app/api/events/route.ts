@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, description, date, isPublic } = parsed.data;
+    const { name, description, date, isPublic, allowMemberUploads } = parsed.data;
 
     const event = await prisma.event.create({
       data: {
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
         description: description || null,
         date: new Date(date),
         isPublic: isPublic ?? false,
+        allowMemberUploads: allowMemberUploads ?? false,
       },
     });
 

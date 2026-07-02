@@ -21,6 +21,7 @@ interface Photo {
   thumbnailUrl: string;
   width: number;
   height: number;
+  embeddings?: unknown | null;
 }
 
 interface EventData {
@@ -29,6 +30,7 @@ interface EventData {
   description: string | null;
   date: Date;
   isPublic: boolean;
+  allowMemberUploads: boolean; 
   inviteCode: string;
   createdBy: { name: string };
   members: Member[];
@@ -48,7 +50,8 @@ export default function EventDetailClient({ event, canManage }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [copied, setCopied] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
-
+  const [allowUploads, setAllowUploads] = useState(event.allowMemberUploads);
+  const [togglingUploads, setTogglingUploads] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", email: "", phone: "" });
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
@@ -61,11 +64,15 @@ export default function EventDetailClient({ event, canManage }: Props) {
   const [uploadError, setUploadError] = useState("");
   const [lightboxPhoto, setLightboxPhoto] = useState<Photo | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [rescanning, setRescanning] = useState(false);
+  const [rescanStatus, setRescanStatus] = useState("");
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
-  const joinUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/join/${inviteCode}`
-      : `/join/${inviteCode}`;
+  const [joinUrl, setJoinUrl] = useState(`/join/${inviteCode}`);
+
+    useEffect(() => {
+      setJoinUrl(`${window.location.origin}/join/${inviteCode}`);
+    }, [inviteCode]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(joinUrl);
@@ -82,6 +89,20 @@ export default function EventDetailClient({ event, canManage }: Props) {
       if (res.ok) setInviteCode(data.inviteCode);
     } finally {
       setRegenerating(false);
+    }
+  };
+  const handleToggleUploads = async () => {
+    setTogglingUploads(true);
+    const next = !allowUploads;
+    try {
+      const res = await fetch(`/api/events/${event.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowMemberUploads: next }),
+      });
+      if (res.ok) setAllowUploads(next);
+    } finally {
+      setTogglingUploads(false);
     }
   };
 
@@ -186,6 +207,20 @@ export default function EventDetailClient({ event, canManage }: Props) {
       setDeletingId(null);
     }
   };
+  
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (!confirm("Remove this member? They'll be able to rejoin with the same email.")) return;
+    setRemovingMemberId(memberId);
+    try {
+      const res = await fetch(`/api/members/${memberId}`, { method: "DELETE" });
+      if (res.ok) {
+        setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      }
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
 
   // ── Live updates: poll every 5s for new members/photos (e.g. self-joins,
   // uploads from another staff member) without requiring a manual refresh.
@@ -208,7 +243,45 @@ export default function EventDetailClient({ event, canManage }: Props) {
 
     return () => clearInterval(interval);
   }, [event.id, uploading, deletingId]);
+  const missingEmbeddingsCount = photos.filter((p: any) => !p.embeddings).length;
 
+    const handleRescan = async () => {
+      setRescanning(true);
+      setRescanStatus("Scanning…");
+
+      try {
+        let remaining = 1;
+        let succeededTotal = 0;
+
+        while (remaining > 0) {
+          const res = await fetch(`/api/events/${event.id}/photos/rescan`, { method: "POST" });
+          const data = await res.json();
+
+          if (!res.ok) {
+            setRescanStatus(data.error || "Rescan failed.");
+            break;
+          }
+
+          succeededTotal += data.succeeded;
+          remaining = data.remaining;
+          setRescanStatus(`Processed ${succeededTotal} photo(s)… ${remaining} remaining`);
+
+          if (data.processed === 0) break; // nothing left to do
+        }
+
+        // Refresh the photo list so embeddings status is up to date
+        const listRes = await fetch(`/api/events/${event.id}/photos`);
+        const listData = await listRes.json();
+        if (listData.photos) setPhotos(listData.photos);
+
+        setRescanStatus("Done.");
+      } catch {
+        setRescanStatus("Network error during rescan.");
+      } finally {
+        setRescanning(false);
+        setTimeout(() => setRescanStatus(""), 4000);
+      }
+    };
   return (
     <div className={styles.page}>
       <Link href="/dashboard/events" className={styles.back}>
@@ -248,7 +321,7 @@ export default function EventDetailClient({ event, canManage }: Props) {
             </button>
           </div>
 
-          {canManage && (
+{canManage && (
             <button
               className={styles.regenerateBtn}
               onClick={handleRegenerate}
@@ -256,6 +329,18 @@ export default function EventDetailClient({ event, canManage }: Props) {
             >
               {regenerating ? "Regenerating…" : "🔄 Regenerate link"}
             </button>
+          )}
+
+          {canManage && (
+            <label className={styles.toggleRow}>
+              <input
+                type="checkbox"
+                checked={allowUploads}
+                onChange={handleToggleUploads}
+                disabled={togglingUploads}
+              />
+              <span>Let guests upload their own photos</span>
+            </label>
           )}
         </div>
 
@@ -320,6 +405,16 @@ export default function EventDetailClient({ event, canManage }: Props) {
                   <span className={styles.joinBadge}>
                     {m.joinedVia === "SELF_JOIN" ? "🔗 self-joined" : "✋ added manually"}
                   </span>
+                  {canManage && (
+                    <button
+                      className={styles.memberDeleteBtn}
+                      onClick={() => handleRemoveMember(m.id)}
+                      disabled={removingMemberId === m.id}
+                      title="Remove member"
+                    >
+                      {removingMemberId === m.id ? "…" : "✕"}
+                    </button>
+                  )}
                 </div>
               ))
             )}
@@ -336,7 +431,21 @@ export default function EventDetailClient({ event, canManage }: Props) {
               {photos.length} uploaded <span className={styles.liveDot}>● live</span>
             </p>
           </div>
+          {canManage && missingEmbeddingsCount > 0 && (
+            <button
+              className={styles.addBtn}
+              onClick={handleRescan}
+              disabled={rescanning}
+            >
+              {rescanning
+                ? rescanStatus || "Scanning…"
+                : `🔍 Re-scan ${missingEmbeddingsCount} photo(s) for faces`}
+            </button>
+          )}
         </div>
+        {rescanStatus && !rescanning && (
+          <p className={styles.cardSubtitle}>{rescanStatus}</p>
+        )}
 
         {canManage && (
           <div

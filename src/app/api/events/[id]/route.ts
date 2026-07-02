@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     );
   }
 
-  const { name, description, date, isPublic } = parsed.data;
+  const { name, description, date, isPublic, allowMemberUploads } = parsed.data;
 
   const event = await prisma.event.update({
     where: { id: params.id },
@@ -70,6 +70,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(description !== undefined && { description: description || null }),
       ...(date && { date: new Date(date) }),
       ...(isPublic !== undefined && { isPublic }),
+      ...(allowMemberUploads !== undefined && { allowMemberUploads }),
     },
   });
 

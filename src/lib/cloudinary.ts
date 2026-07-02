@@ -66,5 +66,34 @@ export async function uploadPhoto(
 export async function deletePhoto(publicId: string): Promise<void> {
   await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
 }
+/**
+ * Uploads a member's selfie temporarily so the face service (which only
+ * accepts image URLs, not raw bytes) can read it. Stored under a separate
+ * /selfies subfolder and always deleted by the caller right after use —
+ * we don't retain selfies long-term for privacy.
+ */
+export async function uploadSelfie(
+  buffer: Buffer,
+  tenantId: string,
+  eventId: string
+): Promise<UploadResult> {
+  const base64 = `data:image/jpeg;base64,${buffer.toString("base64")}`;
+
+  const result = await cloudinary.uploader.upload(base64, {
+    folder: `photosaas/${tenantId}/${eventId}/selfies`,
+    resource_type: "image",
+    quality: "auto",
+    fetch_format: "auto",
+  });
+
+  return {
+    url: result.secure_url,
+    thumbnailUrl: result.secure_url,
+    publicId: result.public_id,
+    width: result.width,
+    height: result.height,
+    bytes: result.bytes,
+  };
+}
 
 export default cloudinary;

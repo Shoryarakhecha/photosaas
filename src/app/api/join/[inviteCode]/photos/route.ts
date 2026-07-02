@@ -1,36 +1,34 @@
-// src/app/api/events/[id]/photos/route.ts
-// GET  → list all photos for an event (tenant-scoped)
-// POST → bulk upload photos (multipart/form-data, multiple files)
+// src/app/api/join/[inviteCode]/photos/route.ts
+// GET  → public gallery — returns all photos for the event (no auth)
+// POST → guest photo upload — only allowed if the event has
+//        allowMemberUploads enabled, and only for a memberId that has
+//        actually joined this event (self-join or manually added).
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, canManageEvents } from "@/lib/auth";
 import { uploadPhoto } from "@/lib/cloudinary";
 import { extractEmbeddings } from "@/lib/faceService";
 
 interface Params {
-  params: { id: string };
+  params: { inviteCode: string };
 }
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB per photo
-const MAX_FILES_PER_REQUEST = 20; // batch limit to keep one request fast & memory-safe
+const MAX_FILES_PER_REQUEST = 10; // stricter than staff's 20 — public-ish endpoint
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
 export async function GET(req: NextRequest, { params }: Params) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
-
-  const event = await prisma.event.findFirst({
-    where: { id: params.id, tenantId: user.tenantId },
+  const event = await prisma.event.findUnique({
+    where: { inviteCode: params.inviteCode },
   });
-  if (!event) {
-    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+
+  if (!event || event.status === "DELETED") {
+    return NextResponse.json({ error: "This invite link is no longer valid." }, { status: 404 });
   }
 
   const photos = await prisma.photo.findMany({
-    where: { eventId: params.id, tenantId: user.tenantId },
+    where: { eventId: event.id },
+    select: { id: true, url: true, thumbnailUrl: true, width: true, height: true },
     orderBy: { order: "asc" },
   });
 
@@ -38,27 +36,40 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const event = await prisma.event.findUnique({
+    where: { inviteCode: params.inviteCode },
+  });
+
+  if (!event || event.status === "DELETED") {
+    return NextResponse.json({ error: "This invite link is no longer valid." }, { status: 404 });
   }
-  if (!canManageEvents(user.role)) {
+
+  if (!event.allowMemberUploads) {
     return NextResponse.json(
-      { error: "You don't have permission to upload photos." },
+      { error: "The organizer hasn't enabled guest uploads for this event." },
       { status: 403 }
     );
   }
 
-  // Confirm the event belongs to this tenant before attaching any photo to it.
-  const event = await prisma.event.findFirst({
-    where: { id: params.id, tenantId: user.tenantId },
-  });
-  if (!event) {
-    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  const formData = await req.formData();
+  const memberId = formData.get("memberId") as string | null;
+  const files = formData.getAll("files") as File[];
+
+  if (!memberId) {
+    return NextResponse.json({ error: "Missing member identity." }, { status: 400 });
   }
 
-  const formData = await req.formData();
-  const files = formData.getAll("files") as File[];
+  // Confirm this memberId genuinely belongs to this event — prevents a
+  // random visitor from spoofing an arbitrary id to bypass the join flow.
+  const member = await prisma.member.findFirst({
+    where: { id: memberId, eventId: event.id },
+  });
+  if (!member) {
+    return NextResponse.json(
+      { error: "You need to join this event before uploading photos." },
+      { status: 403 }
+    );
+  }
 
   if (files.length === 0) {
     return NextResponse.json({ error: "No files provided" }, { status: 400 });
@@ -70,14 +81,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     );
   }
 
-  // How many photos already exist, so newly uploaded ones continue the order sequence
   const existingCount = await prisma.photo.count({ where: { eventId: event.id } });
 
   const uploaded: any[] = [];
   const failed: { name: string; reason: string }[] = [];
 
-  // Upload sequentially rather than Promise.all — keeps memory bounded
-  // and gives Cloudinary's free tier a gentler request rate.
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
 
@@ -92,13 +100,13 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
-      const result = await uploadPhoto(buffer, user.tenantId, event.id);
+      const result = await uploadPhoto(buffer, event.tenantId, event.id);
 
       const photo = await prisma.photo.create({
         data: {
-          tenantId: user.tenantId,
+          tenantId: event.tenantId,
           eventId: event.id,
-          uploadedById: user.userId,
+          uploadedByMemberId: member.id, // guest upload — no staff uploadedById
           url: result.url,
           thumbnailUrl: result.thumbnailUrl,
           publicId: result.publicId,
@@ -109,9 +117,8 @@ export async function POST(req: NextRequest, { params }: Params) {
         },
       });
 
-      // Extract face embeddings right after upload. This must NEVER fail the
-      // photo upload itself — if the face service is cold-starting or errors,
-      // embeddings just stays null and the photo is still saved normally.
+      // Same non-blocking pattern as staff uploads — face extraction must
+      // never fail the upload itself.
       try {
         const faces = await extractEmbeddings(result.url);
         if (faces.length > 0) {
@@ -121,17 +128,16 @@ export async function POST(req: NextRequest, { params }: Params) {
           });
         }
       } catch (faceError) {
-        console.error("[FACE EXTRACTION ERROR]", file.name, faceError);
+        console.error("[GUEST FACE EXTRACTION ERROR]", file.name, faceError);
       }
 
       uploaded.push(photo);
     } catch (error) {
-      console.error("[PHOTO UPLOAD ERROR]", file.name, error);
+      console.error("[GUEST PHOTO UPLOAD ERROR]", file.name, error);
       failed.push({ name: file.name, reason: "Upload failed" });
     }
   }
 
-  // Set the event cover photo automatically if it doesn't have one yet
   if (uploaded.length > 0 && !event.coverUrl) {
     await prisma.event.update({
       where: { id: event.id },

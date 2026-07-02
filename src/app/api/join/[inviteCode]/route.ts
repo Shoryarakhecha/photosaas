@@ -26,6 +26,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       date: true,
       coverUrl: true,
       status: true,
+      allowMemberUploads: true,
       tenant: { select: { name: true, logoUrl: true } },
     },
   });

@@ -51,6 +51,7 @@ export const CreateEventSchema = z.object({
   description: z.string().max(1000).optional().or(z.literal("")),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), "Please enter a valid date"),
   isPublic: z.boolean().optional().default(false),
+  allowMemberUploads: z.boolean().optional().default(false),
 });
 
 export type CreateEventInput = z.infer<typeof CreateEventSchema>;

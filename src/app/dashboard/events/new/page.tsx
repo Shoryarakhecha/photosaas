@@ -23,6 +23,7 @@ export default function NewEventPage() {
     description: "",
     date: "",
     isPublic: false,
+    allowMemberUploads: false,
   });
 
   const update =
@@ -126,6 +127,20 @@ export default function NewEventPage() {
               <span className={styles.checkboxLabel}>Make this event publicly visible</span>
               <p className={styles.checkboxHint}>
                 Anyone with the link can view the gallery (members can always join via the link regardless)
+              </p>
+            </div>
+          </label>
+
+          <label className={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={form.allowMemberUploads}
+              onChange={(e) => setForm((f) => ({ ...f, allowMemberUploads: e.target.checked }))}
+            />
+            <div>
+              <span className={styles.checkboxLabel}>Let guests upload their own photos</span>
+              <p className={styles.checkboxHint}>
+                Good for casual events (trips, parties) — guests can add photos, not just view them. You can turn this off later.
               </p>
             </div>
           </label>
